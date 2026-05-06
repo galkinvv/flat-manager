@@ -115,6 +115,8 @@ pub struct ApiClient {
 
 const PURGE_IN_USE_MESSAGE: &str = "Can't prune build while in use";
 const UPLOAD_CHUNK_LIMIT: u64 = 4 * 1024 * 1024;
+// Some implementations of https-termination blocks too much multipart sections in a POST as suspicious
+const UPLOAD_FILE_COUNT_LIMIT: usize = 90;
 
 #[derive(Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -814,7 +816,10 @@ impl ApiClient {
             let path = object_path(repo_path, object);
             let file_size = std::fs::metadata(&path)?.len();
 
-            if batch_size + file_size > UPLOAD_CHUNK_LIMIT && !batch.is_empty() {
+            if (batch_size + file_size > UPLOAD_CHUNK_LIMIT
+                || batch.len() > UPLOAD_FILE_COUNT_LIMIT)
+                && !batch.is_empty()
+            {
                 self.upload_files(build_url, std::mem::take(&mut batch))
                     .await?;
                 batch_size = 0;
