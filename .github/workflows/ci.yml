@@ -122,12 +122,8 @@ jobs:
         run: cargo clippy -- -D warnings
 
   docker:
-    name: Build Docker image
+    name: Build via Docker image
     runs-on: ubuntu-latest
-    concurrency:
-      group: ${{ github.ref }}
-      cancel-in-progress: true
-    if: success() && github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@v4
 
@@ -136,27 +132,25 @@ jobs:
         with:
           platforms: linux/amd64
 
-      - name: Login to ghcr.io
-        uses: docker/login-action@v3
-        if: github.ref == 'refs/heads/master'
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push
-        uses: docker/build-push-action@v6
+      - name: Build
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
+          tags: flatpak-manager-client:latest
+          load: true
           push: ${{ github.ref == 'refs/heads/master' }}
-          tags: |
-            ghcr.io/flatpak/flat-manager:${{ github.sha }}
-            ghcr.io/flatpak/flat-manager:latest
-          labels: |
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.source=ssh://git@github.com:${{ github.repository }}.git
-            org.opencontainers.image.url=https://github.com/${{ github.repository }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
           platforms: linux/amd64
+
+      - name: extract
+        uses: shrink/actions-docker-extract@v4
+        id: extract
+        with:
+          image: flatpak-manager-client:latest
+          path: /usr/local/bin/flat-manager-client
+          destination: dist
+
+      - name: Upload Dist
+        uses: actions/upload-artifact@v7
+        with:
+          path: dist
