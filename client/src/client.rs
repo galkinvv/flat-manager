@@ -114,9 +114,9 @@ pub struct ApiClient {
 }
 
 const PURGE_IN_USE_MESSAGE: &str = "Can't prune build while in use";
-const UPLOAD_CHUNK_LIMIT: u64 = 4 * 1024 * 1024;
+const UPLOAD_CHUNK_LIMIT: u64 = 1 * 1024 * 1024;
 // Some implementations of https-termination blocks too much multipart sections in a POST as suspicious
-const UPLOAD_FILE_COUNT_LIMIT: usize = 0;
+const UPLOAD_FILE_COUNT_LIMIT: usize = 50000;
 
 #[derive(Serialize)]
 #[serde(rename_all = "kebab-case")]
