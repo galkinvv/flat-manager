@@ -542,6 +542,8 @@ impl ApiClient {
     pub fn new(token: impl Into<String>) -> Self {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(90 * 60))
+            .pool_max_idle_per_host(0)
+            .http1_only()
             .build()
             .expect("failed to build reqwest client");
 
