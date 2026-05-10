@@ -15,6 +15,7 @@ use std::{
     io::{ErrorKind, Write},
     path::{Path, PathBuf},
     time::{Duration, SystemTime, UNIX_EPOCH},
+    thread,
 };
 use tokio::time::{sleep, Instant};
 
@@ -116,7 +117,7 @@ pub struct ApiClient {
 const PURGE_IN_USE_MESSAGE: &str = "Can't prune build while in use";
 const UPLOAD_CHUNK_LIMIT: u64 = 1 * 1024 * 1024;
 // Some implementations of https-termination blocks too much multipart sections in a POST as suspicious
-const UPLOAD_FILE_COUNT_LIMIT: usize = 50000;
+const UPLOAD_FILE_COUNT_LIMIT: usize = 0;
 
 #[derive(Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -792,6 +793,7 @@ impl ApiClient {
                 .await?;
             let status = response.status();
             println!("Uploaded status {}", status);
+            thread::sleep(Duration::from_secs(1));
 
             if status.as_u16() != 200 {
                 return Err(ClientError::Http {
