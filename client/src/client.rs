@@ -814,7 +814,7 @@ impl ApiClient {
         let mut batch = Vec::new();
         let mut batch_size = 0u64;
 
-        for object in objects {
+        for object in objects.iter().rev() {
             let path = object_path(repo_path, object);
             let file_size = std::fs::metadata(&path)?.len();
 
