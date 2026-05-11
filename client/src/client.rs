@@ -115,9 +115,7 @@ pub struct ApiClient {
 }
 
 const PURGE_IN_USE_MESSAGE: &str = "Can't prune build while in use";
-const UPLOAD_CHUNK_LIMIT: u64 = 1 * 1024 * 1024;
-// Some implementations of https-termination blocks too much multipart sections in a POST as suspicious
-const UPLOAD_FILE_COUNT_LIMIT: usize = 0;
+const UPLOAD_CHUNK_LIMIT: u64 = 4 * 1024 * 1024;
 
 #[derive(Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -793,7 +791,6 @@ impl ApiClient {
                 .await?;
             let status = response.status();
             println!("Uploaded status {}", status);
-            thread::sleep(Duration::from_secs(1));
 
             if status.as_u16() != 200 {
                 return Err(ClientError::Http {
@@ -814,6 +811,7 @@ impl ApiClient {
         repo_path: &str,
         build_url: &str,
         objects: &[String],
+        filecount_limit: usize,
     ) -> Result<(), ClientError> {
         let mut batch = Vec::new();
         let mut batch_size = 0u64;
@@ -823,7 +821,7 @@ impl ApiClient {
             let file_size = std::fs::metadata(&path)?.len();
 
             if (batch_size + file_size > UPLOAD_CHUNK_LIMIT
-                || batch.len() > UPLOAD_FILE_COUNT_LIMIT)
+                || batch.len() > filecount_limit)
                 && !batch.is_empty()
             {
                 self.upload_files(build_url, std::mem::take(&mut batch))
@@ -840,6 +838,7 @@ impl ApiClient {
                 batch_size = 0;
             }
         }
+        thread::sleep(Duration::from_secs(1));
 
         if !batch.is_empty() {
             self.upload_files(build_url, batch).await?;
@@ -1078,12 +1077,12 @@ impl ApiClient {
 
         println!("Uploading file objects");
         upload_client
-            .upload_objects(&args.repo_path, &args.build_url, &missing_files)
+            .upload_objects(&args.repo_path, &args.build_url, &missing_files, 99999999)
             .await?;
 
         println!("Uploading metadata objects");
         upload_client
-            .upload_objects(&args.repo_path, &args.build_url, &missing_metadata)
+            .upload_objects(&args.repo_path, &args.build_url, &missing_metadata, 2)
             .await?;
 
         let deltas = repo
